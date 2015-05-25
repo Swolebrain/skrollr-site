@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>3D Canvas Intro Page</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			a {
+				color:#0078ff;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="http://threejs.org/build/three.min.js"></script>
+
+		<script src="http://threejs.org/examples/js/renderers/Projector.js"></script>
+		<script src="http://threejs.org/examples/js/renderers/CanvasRenderer.js"></script>
+
+		<script>
+			"use strict;";
+			var dotsInCircles = [];
+			var allLines = [];
+			var touchPos = {x: "", y: ""};
+			var SCREEN_WIDTH = window.innerWidth,
+			SCREEN_HEIGHT = window.innerHeight,
+			mouseX = 0, mouseY = 0,
+
+			windowHalfX = window.innerWidth / 2,
+			windowHalfY = window.innerHeight / 2,
+
+			SEPARATION = 200,
+			AMOUNTX = 10,
+			AMOUNTY = 10,
+
+			camera, scene, renderer;
+			
+			var clock = new THREE.Clock();
+			var dt;
+			//the box for the vertices to bounce from
+			var constraintbox = {x0:-SCREEN_WIDTH*.45,
+					y0: -SCREEN_HEIGHT*.4, x1: SCREEN_WIDTH*.45, y1:SCREEN_HEIGHT*.4};
+			var center1, center2;
+
+			init();
+			animate();
+
+			function init() {
+
+				var container, separation = 100, amountX = 50, amountY = 50;
+
+				container = document.createElement('div');
+				document.body.appendChild(container);
+
+				camera = new THREE.PerspectiveCamera( 75, SCREEN_WIDTH / SCREEN_HEIGHT, 1, 10000 );
+				camera.position.z = 1000;
+
+				scene = new THREE.Scene();
+				
+				renderer = new THREE.CanvasRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+				container.appendChild( renderer.domElement );
+				
+				
+				
+				var materials = [ new THREE.MeshBasicMaterial( {color: 0xaaaaaa} ),
+								new THREE.MeshBasicMaterial( {color: 0xbbbbbb} ),
+								new THREE.MeshBasicMaterial( {color: 0x444444} ),
+								new THREE.MeshBasicMaterial( {color: 0xcccccc} ),
+								new THREE.MeshBasicMaterial( {color: 0xffffff} ),
+								new THREE.MeshBasicMaterial( {color: 0x777777} )];
+				
+				
+			
+				/* circular paths */
+				var radius = 2; 
+				var segments = 2; 
+				var maxy = Math.max(SCREEN_HEIGHT/4, SCREEN_HEIGHT/2-275);
+				center1 = {x: -SCREEN_WIDTH/4, y: maxy};
+				center2 = {x: SCREEN_WIDTH/4, y: maxy};
+				init2();
+				var circleGeometry, circle;
+				for ( var i = 0; i < 800; i ++ ) {
+					circleGeometry = new THREE.CircleGeometry( radius, segments); 
+					circle = new THREE.Mesh( circleGeometry, materials[Math.floor(Math.random()*6)] );
+					var rad = Math.random()*75+200;
+					var theta = Math.random()*2*Math.PI;
+					if (i%2 === 0) circle.center = center1;
+					else circle.center = center2;
+					var x = Math.cos(theta)*rad + circle.center.x;
+					var	y = Math.sin(theta)*rad + circle.center.y;
+					circle.position.set( x, y , 0 );
+					scene.add( circle );
+					circle.rad = rad;
+					circle.theta = theta;
+					circle.dt = 0.003+Math.random()/200;
+					if (i % 2 === 1) circle.dt = -circle.dt;
+					dotsInCircles.push(circle);
+
+				}
+				
+				
+				/* bg lines  */
+				/*
+				var lineGeo;
+				var numLines = 15;
+				var mat = new THREE.LineBasicMaterial( {color: 0x444444} );
+				//using the circle centers from above
+				var leftVert = new THREE.Vector3(center1.x, center1.y, -1);
+				var rightVert = new THREE.Vector3(center2.x, center2.y, -1);
+				leftVert.dx = -.05; leftVert.dy = .5;
+				rightVert.dx = .05; rightVert.dy = -.5;
+				leftVert.update = incrementVertexPosition;
+				rightVert.update = incrementVertexPosition;
+				//calculate midpoint between both cicle centers:
+				
+				for (var i = 0; i < numLines; i++){
+					lineGeo = new THREE.Geometry();
+					var randx = Math.random()*constraintbox.x1*2+constraintbox.x0;
+					var randy = Math.random()*constraintbox.y1*2+constraintbox.y0;
+					var mid = new THREE.Vector3(randx, randy, Math.random()*200+100);
+					mid.update = incrementVertexPosition;
+					mid.dx = Math.random()-.5; mid.dy = Math.random()-.5;
+					lineGeo.vertices.push(leftVert); 
+					lineGeo.vertices.push(mid);
+					lineGeo.vertices.push(rightVert);
+					var line = new THREE.Line(lineGeo, mat);
+					scene.add(line);
+					allLines.push(line);
+					
+				}
+				var l = allLines.length;
+				for (var j = 0; j < l; j++){
+					for (var n = 0; n < l; n++){
+						if (n === j) continue;
+						lineGeo = new THREE.Geometry();
+						lineGeo.vertices.push(allLines[j].geometry.vertices[1]);
+						lineGeo.vertices.push(allLines[n].geometry.vertices[1]);
+						line = new THREE.Line(lineGeo, mat);
+						scene.add(line);
+						allLines.push(line);
+					}
+				}*/
+				//constraintbox is an object created based on the size of the imaginary rectangle
+				//enclosing the two circles
+				function incrementVertexPosition (delta, constraintbox){
+					if (!constraintbox) constraintbox = {x0:-SCREEN_WIDTH*.4,
+					y0: -SCREEN_HEIGHT*.4, x1: SCREEN_WIDTH*.4, y1:SCREEN_HEIGHT*.4};
+					if (delta){
+						this.x += this.dx*delta;
+						this.y += this.dy*delta;
+						if (this.x < constraintbox.x0 || this.x > constraintbox.x1 ) this.dx = -this.dx;
+						if (this.y < constraintbox.y0 || this.y > constraintbox.y1 ) this.dy = -this.dy;
+					}
+				}
+				
+				
+				//document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+				//document.addEventListener( 'touchend', onDocumentTouchStart, false );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+			
+			function init2(){
+				var img = new THREE.MeshBasicMaterial({ //CHANGED to MeshBasicMaterial
+					map:THREE.ImageUtils.loadTexture('res/VM-vectorized-sm.png'),
+					overdraw:true
+				});
+				img.map.needsUpdate = true;
+				var plane = new THREE.Mesh(new THREE.PlaneGeometry(400, 455),img);
+				plane.overdraw = true;
+				plane.position.y = center1.y; 
+				plane.position.x = center1.x; 
+				plane.position.z = -50;
+				scene.add(plane);
+				var ambientLight = new THREE.AmbientLight(0x555555);
+    			scene.add(ambientLight);
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function onDocumentMouseMove(event) {
+
+				mouseX = event.clientX - windowHalfX;
+				mouseY = event.clientY - windowHalfY;
+			}
+
+			function onDocumentTouchStart( event ) {
+				if ( event.touches.length > 1 ) {
+					event.preventDefault();
+					touchPos.x = event.touches[ 0 ].pageX;
+					touchPos.y = event.touches[ 0 ].pageY;
+
+				}
+
+			}
+
+			function onDocumentTouchMove( event ) {
+				if ( event.touches.length == 1 ) {
+					event.preventDefault();
+					var touchX = event.touches[ 0 ].pageX ;
+					var touchY = event.touches[ 0 ].pageY;
+					if (touchX > touchPos.x || touchY > touchPos.y) onScroll();
+				}
+
+			}
+			
+			//game loop
+			function animate() {
+				dt = clock.getDelta();
+				requestAnimationFrame( animate );
+
+				render(dt);
+
+			}
+			
+			var clicked = false;
+			var lineDrawThreshold = Math.min(SCREEN_WIDTH/3, SCREEN_HEIGHT/3);
+			function render(dt) {
+				for (var i = 0, l = dotsInCircles.length ; i < l; i++){
+					var circle = dotsInCircles[i];
+					circle.theta += circle.dt;
+					var x = Math.cos(circle.theta)*circle.rad + circle.center.x;
+					var	y = Math.sin(circle.theta)*circle.rad + circle.center.y;
+					circle.position.set( x, y , circle.position.z );
+				}
+				for (var i = 0, l = allLines.length ; i < l; i++){
+					allLines[i].geometry.vertices[0].update(dt, constraintbox);
+					allLines[i].geometry.vertices[1].update(dt, constraintbox);
+					var thirdVert = allLines[i].geometry.vertices[2];
+					if (thirdVert) thirdVert.update(dt, constraintbox);
+					
+				}
+				
+				camera.lookAt( scene.position );
+				
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+</html>
